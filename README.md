@@ -17,7 +17,7 @@ The program automatically collects and sends the following information from your
 - Processor / CPU (`_snipeit_processor_cpu_8`)
 - IP Address (`_snipeit_ip_address_9`)
 
-[Download the latest version here](https://github.com/booskit-codes/pyitagent/releases/).
+[Download the latest version here](https://github.com/booskit-codes/PyITAgent/releases/).
 
 ## Usage Instructions
 
