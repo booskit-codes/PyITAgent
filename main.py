@@ -2,6 +2,7 @@ import requests
 import subprocess
 import configparser
 import os
+import sys
 
 class ITInventoryClient:
     def __init__(self, url, access_token):
@@ -213,17 +214,38 @@ class ITInventoryClient:
             self.patch_hardware(hardware_id, serial_number, pc_name, model_id, mac_address, ram_available, operating_system, os_install_date, ipv4, disk_size, disk_info, cpu)
         return hardware_id
 
-# Define the configuration function, try not to touch this.
-def get_config():
-    # Get the directory of the current script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Build the path to the config.ini file
-    config_path = os.path.join(script_dir, 'config.ini')
+# Resolve pyinstaller's stoopid windows executable path issue
+def resolve_path(path):
+    if getattr(sys, "frozen", False):
+        # If the 'frozen' flag is set, we are in bundled-app mode!
+        # Use the directory of the executable
+        application_path = os.path.dirname(sys.executable)
+        resolved_path = os.path.abspath(os.path.join(application_path, path))
+    else:
+        # Normal development mode.
+        resolved_path = os.path.abspath(os.path.join(os.getcwd(), path))
 
+    return resolved_path
+
+# The other thing is to be continued, thanks ChatGPT
+def get_config():
+    config_path = resolve_path('config.ini')
+    
+    if not os.path.exists(config_path):
+        # config.ini does not exist, you can generate a default one or notify the user to create it
+        print("config.ini not found. Please create it at:", config_path)
+        # Example code to generate a default config.ini, uncomment and modify as needed
+        # config = configparser.ConfigParser()
+        # config['DEFAULT'] = {'Setting1': 'Value1', 'Setting2': 'Value2'}
+        # with open(config_path, 'w') as configfile:
+        #     config.write(configfile)
+        # print("A default config.ini has been created at:", config_path)
+        return None  # or return a default config object
+
+    # If config.ini exists, read it
     config = configparser.ConfigParser()
     config.read(config_path)
     return config
-
 
 def main():
 
