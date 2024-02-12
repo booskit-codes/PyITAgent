@@ -27,6 +27,40 @@ class ITInventoryClient:
         self.processor = self.run_command("(gwmi Win32_processor).name")
         self.current_user = self.run_command("[System.Security.Principal.WindowsIdentity]::GetCurrent().Name")
 
+    def resolve_payload(self, type, values):
+        match type:
+            case "hardware":
+                return {
+                    'serial': values['serial_number'],
+                    'name': self.hostname,
+                    'asset_tag': values['serial_number'],
+                    'status_id': values['status_id'],
+                    'model_id': values['model_id'],
+                    'company_id': values['company_id'],
+                    '_snipeit_mac_address_1': self.mac_addresses,
+                    '_snipeit_memory_ram_2': self.ram_available,
+                    '_snipeit_operating_system_3': self.os,
+                    '_snipeit_os_install_date_4': self.os_install_date,
+                    '_snipeit_ip_address_9': self.ip_address,
+                    '_snipeit_total_storage_6': self.disk_size,
+                    '_snipeit_storage_information_7': self.disk_info,
+                    '_snipeit_processor_cpu_8': self.processor,
+                    '_snipeit_bios_release_date_10': self.bios_release_date,
+                    '_snipeit_windows_username_11': self.current_user
+                }
+            case "model":
+                return {
+                    "name": self.model,
+                    "model_number": self.model_number,
+                    "category_id": values['category_id'],
+                    "manufacturer_id": values['manufacturer_id'],
+                    "fieldset_id": values['fieldset_id']
+                }
+            case "manufacturer":
+                return {
+                    values['manufacturer_name']
+                }
+
     def run_command(self, cmd):
         completed = subprocess.run(["powershell.exe", "-Command", cmd], capture_output=True)
         return completed.stdout.decode("utf-8").strip()
@@ -89,7 +123,10 @@ class ITInventoryClient:
         
     def post_manufacturer(self, manufacturer_name):
         endpoint = 'manufacturers'
-        payload = {'name': manufacturer_name}
+        values = {
+            'manufacturer_name': manufacturer_name,
+        }
+        payload = self.resolve_payload("manufacturer", values)
         response = self.send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
@@ -108,13 +145,12 @@ class ITInventoryClient:
     
     def post_model(self, manufacturer_id, category_id=3, fieldset_id=1):
         endpoint = 'models'
-        payload = {
-            "name": self.model,
-            "model_number": self.model_number,
-            "category_id": category_id,
-            "manufacturer_id": manufacturer_id,
-            "fieldset_id": fieldset_id
+        values = {
+            'manufacturer_id': manufacturer_id,
+            'category_id': category_id,
+            'fieldset_id': fieldset_id
         }
+        payload = self.resolve_payload("model", values)
         response = self.send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
@@ -144,24 +180,13 @@ class ITInventoryClient:
     
     def post_hardware(self, serial_number, model_id, status_id, company_id):
         endpoint = 'hardware'
-        payload = {
-            'serial': serial_number,
-            'name': self.hostname,
-            'asset_tag': serial_number,  # Assuming this method exists
+        values = {
+            'serial_number': serial_number,
             'status_id': status_id,
             'model_id': model_id,
             'company_id': company_id,
-            '_snipeit_mac_address_1': self.mac_addresses,
-            '_snipeit_memory_ram_2': self.ram_available,
-            '_snipeit_operating_system_3': self.os,
-            '_snipeit_os_install_date_4': self.os_install_date,
-            '_snipeit_ip_address_9': self.ip_address,
-            '_snipeit_total_storage_6': self.disk_size,
-            '_snipeit_storage_information_7': self.disk_info,
-            '_snipeit_processor_cpu_8': self.processor,
-            '_snipeit_bios_release_date_10': self.bios_release_date,
-            '_snipeit_windows_username_11': self.current_user
         }
+        payload = self.resolve_payload("hardware", values)
         response = self.send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
@@ -182,24 +207,13 @@ class ITInventoryClient:
     
     def patch_hardware(self, hardware_id, serial_number, model_id, status_id, company_id):
         endpoint = f'hardware/{hardware_id}?deleted=false'
-        payload = {
-            'serial': serial_number,
-            'name': self.hostname,
-            'asset_tag': serial_number,  # Assuming this method exists
+        values = {
+            'serial_number': serial_number,
             'status_id': status_id,
             'model_id': model_id,
             'company_id': company_id,
-            '_snipeit_mac_address_1': self.mac_addresses,
-            '_snipeit_memory_ram_2': self.ram_available,
-            '_snipeit_operating_system_3': self.os,
-            '_snipeit_os_install_date_4': self.os_install_date,
-            '_snipeit_ip_address_9': self.ip_address,
-            '_snipeit_total_storage_6': self.disk_size,
-            '_snipeit_storage_information_7': self.disk_info,
-            '_snipeit_processor_cpu_8': self.processor,
-            '_snipeit_bios_release_date_10': self.bios_release_date,
-            '_snipeit_windows_username_11': self.current_user
         }
+        payload = self.resolve_payload("hardware", values)
         response = self.send_request('PATCH', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
