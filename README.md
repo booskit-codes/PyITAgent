@@ -31,7 +31,9 @@ For best results, integrate PyITAgent within an environment that utilizes Active
 
 ## Developer Notes
 
-To modify or extend PyITAgent, you can rebuild the executable using PyInstaller:
+In order for the program to work, you're required to make a copy of `config-example.ini` and rename it to `config.ini`.
+
+When modifying the program, you can rebuild the executable using PyInstaller:
 
 ```
 pyinstaller PyITAgent.spec
