@@ -22,7 +22,7 @@ class ITInventoryClient:
         self.model_number, self.model = self.determine_model_info()
         self.ip_address = self.run_command("(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString")
         self.disk_size, self.disk_info = self.determine_disk_info()
-        self.mac_addresses = self.run_command("Get-NetAdapter | ForEach-Object { $_.Name + " " + $_.MacAddress }")
+        self.mac_addresses = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | where {$_.ipenabled -EQ $true}).Macaddress")
         self.processor = self.run_command("(gwmi Win32_processor).name")
 
     def run_command(self, cmd):
