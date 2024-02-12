@@ -142,7 +142,7 @@ class ITInventoryClient:
                 model_id = self.get_model(self.model)
         return model_id
     
-    def post_hardware(self, serial_number, model_id, status_id=2, company_id=1):
+    def post_hardware(self, serial_number, model_id, status_id, company_id):
         endpoint = 'hardware'
         payload = {
             'serial': serial_number,
@@ -180,7 +180,7 @@ class ITInventoryClient:
         print("No hardware found in database, perhaps create a new one?")
         return None
     
-    def patch_hardware(self, hardware_id, serial_number, model_id, status_id=2, company_id=1):
+    def patch_hardware(self, hardware_id, serial_number, model_id, status_id, company_id):
         endpoint = f'hardware/{hardware_id}?deleted=false'
         payload = {
             'serial': serial_number,
@@ -207,17 +207,17 @@ class ITInventoryClient:
             print(f"Failed to update hardware: {response.get('messages')}")
             return False
     
-    def get_or_create_hardware(self, model_id, update_hardware):
+    def get_or_create_hardware(self, model_id, update_hardware, status_id = 2, company_id = 1):
         hardware_id = self.get_hardware(self.serial_number)
         if hardware_id is None:
             print("Creating new hardware")
             update_hardware = False
-            success = self.post_hardware(self.serial_number, model_id)
+            success = self.post_hardware(self.serial_number, model_id, status_id, company_id)
             if success:
                 hardware_id = self.get_hardware(self.serial_number)
         if update_hardware:
             print("Patching hardware")
-            self.patch_hardware(hardware_id, self.serial_number, model_id)
+            self.patch_hardware(hardware_id, self.serial_number, model_id, status_id, company_id)
         return hardware_id
 
 # Resolve pyinstaller's stoopid windows executable path issue
@@ -297,8 +297,10 @@ def main():
     print("Model fetched: ", model_id)
 
     # Get the hardware, if it exists, update it properly.
+    snipeit_status_id = config['GENERAL']['snipeit_status_id']
+    snipeit_company_id = config['GENERAL']['snipeit_company_id']
     update_hardware = True
-    hardware_id = it_client.get_or_create_hardware(model_id, update_hardware)
+    hardware_id = it_client.get_or_create_hardware(model_id, update_hardware, snipeit_status_id, snipeit_company_id)
     if hardware_id is None:
         return print("Failed to fetch hardware")
     print("Hardware fetched: ", hardware_id)
