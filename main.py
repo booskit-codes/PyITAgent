@@ -22,8 +22,9 @@ class ITInventoryClient:
         self.model_number, self.model = self.determine_model_info()
         self.ip_address = self.run_command("(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString")
         self.disk_size, self.disk_info = self.determine_disk_info()
-        self.mac_addresses = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | where {$_.ipenabled -EQ $true}).Macaddress")
+        self.mac_addresses = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
         self.processor = self.run_command("(gwmi Win32_processor).name")
+        self.current_user = self.run_command("[System.Security.Principal.WindowsIdentity]::GetCurrent().Name")
 
     def run_command(self, cmd):
         completed = subprocess.run(["powershell.exe", "-Command", cmd], capture_output=True)
@@ -104,11 +105,11 @@ class ITInventoryClient:
                 manufacturer_id = self.get_manufacturer(manufacturer_name)
         return manufacturer_id
     
-    def post_model(self, model_name, model_number, manufacturer_id, category_id=3, fieldset_id=1):
+    def post_model(self, manufacturer_id, category_id=3, fieldset_id=1):
         endpoint = 'models'
         payload = {
-            "name": model_name,
-            "model_number": model_number,
+            "name": self.model,
+            "model_number": self.model_number,
             "category_id": category_id,
             "manufacturer_id": manufacturer_id,
             "fieldset_id": fieldset_id
@@ -131,32 +132,32 @@ class ITInventoryClient:
         print("No model found in database, perhaps create a new one?")
         return None
     
-    def get_or_create_model(self, model_name, model_number, manufacturer_id):
-        model_id = self.get_model(model_name)
+    def get_or_create_model(self, manufacturer_id):
+        model_id = self.get_model(self.model)
         if model_id is None:
             print("Creating new model")
-            success = self.post_model(model_name, model_number, manufacturer_id)
+            success = self.post_model(manufacturer_id)
             if success:
-                model_id = self.get_model(model_name)
+                model_id = self.get_model(self.model)
         return model_id
     
-    def post_hardware(self, serial_number, pc_name, model_id, mac_address, ram_available, operating_system, os_install_date, ipv4, disk_size, disk_info, cpu, status_id=2, company_id=1):
+    def post_hardware(self, serial_number, model_id, status_id=2, company_id=1):
         endpoint = 'hardware'
         payload = {
             'serial': serial_number,
-            'name': pc_name,
+            'name': self.hostname,
             'asset_tag': serial_number,  # Assuming this method exists
             'status_id': status_id,
             'model_id': model_id,
             'company_id': company_id,
-            '_snipeit_mac_address_1': mac_address,
-            '_snipeit_memory_ram_2': ram_available,
-            '_snipeit_operating_system_3': operating_system,
-            '_snipeit_os_install_date_4': os_install_date,
-            '_snipeit_ip_address_9': ipv4,
-            '_snipeit_total_storage_6': disk_size,
-            '_snipeit_storage_information_7': disk_info,
-            '_snipeit_processor_cpu_8': cpu
+            '_snipeit_mac_address_1': self.mac_addresses,
+            '_snipeit_memory_ram_2': self.ram_available,
+            '_snipeit_operating_system_3': self.os,
+            '_snipeit_os_install_date_4': self.os_install_date,
+            '_snipeit_ip_address_9': self.ip_address,
+            '_snipeit_total_storage_6': self.disk_size,
+            '_snipeit_storage_information_7': self.disk_info,
+            '_snipeit_processor_cpu_8': self.processor
         }
         response = self.send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
@@ -176,23 +177,23 @@ class ITInventoryClient:
         print("No hardware found in database, perhaps create a new one?")
         return None
     
-    def patch_hardware(self, hardware_id, serial_number, pc_name, model_id, mac_address, ram_available, operating_system, os_install_date, ipv4, disk_size, disk_info, cpu, status_id=2, company_id=1):
+    def patch_hardware(self, hardware_id, serial_number, model_id, status_id=2, company_id=1):
         endpoint = f'hardware/{hardware_id}?deleted=false'
         payload = {
             'serial': serial_number,
-            'name': pc_name,
+            'name': self.hostname,
             'asset_tag': serial_number,  # Assuming this method exists
             'status_id': status_id,
             'model_id': model_id,
             'company_id': company_id,
-            '_snipeit_mac_address_1': mac_address,
-            '_snipeit_memory_ram_2': ram_available,
-            '_snipeit_operating_system_3': operating_system,
-            '_snipeit_os_install_date_4': os_install_date,
-            '_snipeit_ip_address_9': ipv4,
-            '_snipeit_total_storage_6': disk_size,
-            '_snipeit_storage_information_7': disk_info,
-            '_snipeit_processor_cpu_8': cpu
+            '_snipeit_mac_address_1': self.mac_addresses,
+            '_snipeit_memory_ram_2': self.ram_available,
+            '_snipeit_operating_system_3': self.os,
+            '_snipeit_os_install_date_4': self.os_install_date,
+            '_snipeit_ip_address_9': self.ip_address,
+            '_snipeit_total_storage_6': self.disk_size,
+            '_snipeit_storage_information_7': self.disk_info,
+            '_snipeit_processor_cpu_8': self.processor
         }
         response = self.send_request('PATCH', endpoint, payload=payload)
         if response.get('status') == 'success':
@@ -201,17 +202,17 @@ class ITInventoryClient:
             print(f"Failed to update hardware: {response.get('messages')}")
             return False
     
-    def get_or_create_hardware(self, serial_number, pc_name, model_id, mac_address, ram_available, operating_system, os_install_date, ipv4, disk_size, disk_info, cpu, update_hardware):
-        hardware_id = self.get_hardware(serial_number)
+    def get_or_create_hardware(self, model_id, update_hardware):
+        hardware_id = self.get_hardware(self.serial_number)
         if hardware_id is None:
             print("Creating new hardware")
             update_hardware = False
-            success = self.post_hardware(serial_number, pc_name, model_id, mac_address, ram_available, operating_system, os_install_date, ipv4, disk_size, disk_info, cpu)
+            success = self.post_hardware(self.serial_number, model_id)
             if success:
-                hardware_id = self.get_hardware(serial_number)
+                hardware_id = self.get_hardware(self.serial_number)
         if update_hardware:
             print("Patching hardware")
-            self.patch_hardware(hardware_id, serial_number, pc_name, model_id, mac_address, ram_available, operating_system, os_install_date, ipv4, disk_size, disk_info, cpu)
+            self.patch_hardware(hardware_id, self.serial_number, model_id)
         return hardware_id
 
 # Resolve pyinstaller's stoopid windows executable path issue
@@ -274,6 +275,7 @@ def main():
           Disk Size: {it_client.disk_size}
           MAC Address: {it_client.mac_addresses}
           Processor: {it_client.processor}
+          Current User: {it_client.current_user}
           """)
     
     # Get the manufacturer
@@ -283,14 +285,14 @@ def main():
     print("Manufacturer fetched: ", manufacturer_id)
 
     # Get the model
-    model_id = it_client.get_or_create_model(it_client.model, it_client.model_number, manufacturer_id)
+    model_id = it_client.get_or_create_model(manufacturer_id)
     if model_id is None:
         return print("Failed to fetch model")
     print("Model fetched: ", model_id)
 
     # Get the hardware, if it exists, update it properly.
     update_hardware = True
-    hardware_id = it_client.get_or_create_hardware(it_client.serial_number, it_client.hostname, model_id, it_client.mac_addresses, it_client.ram_available, it_client.os, it_client.os_install_date, it_client.ip_address, it_client.disk_size, it_client.disk_info, it_client.processor, update_hardware)
+    hardware_id = it_client.get_or_create_hardware(model_id, update_hardware)
     if hardware_id is None:
         return print("Failed to fetch hardware")
     print("Hardware fetched: ", hardware_id)
