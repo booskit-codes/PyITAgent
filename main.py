@@ -18,11 +18,12 @@ class ITInventoryClient:
         self.hostname = self.run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
         self.os = self.run_command("(Get-WmiObject Win32_OperatingSystem).Caption")
         self.ram_available = self.run_command("[Math]::Round((Get-WmiObject Win32_ComputerSystem).totalphysicalmemory / 1gb,1)")
+        self.ram_used = self.run_command("[Math]::Round(((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory - (Get-WmiObject Win32_OperatingSystem).FreePhysicalMemory * 1024) / 1GB, 2)")
         self.os_install_date = self.run_command("[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_OperatingSystem).InstallDate).TotalSeconds)")
         self.bios_release_date = self.run_command("[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_BIOS).ReleaseDate).TotalSeconds)")
         self.model_number, self.model = self.determine_model_info()
         self.ip_address = self.run_command("(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString")
-        self.disk_size, self.disk_info = self.determine_disk_info()
+        self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
         self.mac_addresses = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
         self.processor = self.run_command("(gwmi Win32_processor).name")
         self.current_user = self.run_command("[System.Security.Principal.WindowsIdentity]::GetCurrent().Name")
@@ -46,7 +47,9 @@ class ITInventoryClient:
                     '_snipeit_storage_information_7': self.disk_info,
                     '_snipeit_processor_cpu_8': self.processor,
                     '_snipeit_bios_release_date_10': self.bios_release_date,
-                    '_snipeit_windows_username_11': self.current_user
+                    '_snipeit_windows_username_11': self.current_user,
+                    '_snipeit_ram_used_12': self.ram_used,
+                    '_snipeit_disk_space_used_13': self.disk_used
                 }
             case "model":
                 return {
@@ -91,7 +94,8 @@ class ITInventoryClient:
             echo "$($_.MediaType) - $($_.Model) - $($_.SerialNumber) - $([Math]::Round($_.Size/1gb,2)) GB"
         }
         """)
-        return disk_size, disk_info
+        disk_used = self.run_command("[Math]::Round(((Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").Size - (Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").FreeSpace) / 1GB, 2)")
+        return disk_size, disk_info, disk_used
 
     def send_request(self, method, endpoint, payload=None):
         url = f"{self.url_prefix}/{endpoint}"
@@ -288,10 +292,12 @@ def main():
           Hostname: {it_client.hostname}
           OS: {it_client.os}
           Ram Available: {it_client.ram_available}
+          Ram Used: {it_client.ram_used}
           OS Install Date: {it_client.os_install_date}
           Model Number: {it_client.model_number}
           IP Address: {it_client.ip_address}
           Disk Size: {it_client.disk_size}
+          Disk Used: {it_client.disk_used}
           MAC Address: {it_client.mac_addresses}
           Processor: {it_client.processor}
           Current User: {it_client.current_user}
