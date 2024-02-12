@@ -18,7 +18,8 @@ class ITInventoryClient:
         self.hostname = self.run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
         self.os = self.run_command("(Get-WmiObject Win32_OperatingSystem).Caption")
         self.ram_available = self.run_command("[Math]::Round((Get-WmiObject Win32_ComputerSystem).totalphysicalmemory / 1gb,1)")
-        self.os_install_date = self.run_command("Get-CimInstance Win32_OperatingSystem | Select-Object  InstallDate | ForEach{ $_.InstallDate }")
+        self.os_install_date = self.run_command("[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_OperatingSystem).InstallDate).TotalSeconds)")
+        self.bios_release_date = self.run_command("[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_BIOS).ReleaseDate).TotalSeconds)")
         self.model_number, self.model = self.determine_model_info()
         self.ip_address = self.run_command("(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString")
         self.disk_size, self.disk_info = self.determine_disk_info()
@@ -157,7 +158,9 @@ class ITInventoryClient:
             '_snipeit_ip_address_9': self.ip_address,
             '_snipeit_total_storage_6': self.disk_size,
             '_snipeit_storage_information_7': self.disk_info,
-            '_snipeit_processor_cpu_8': self.processor
+            '_snipeit_processor_cpu_8': self.processor,
+            '_snipeit_bios_release_date_10': self.bios_release_date,
+            '_snipeit_windows_username_11': self.current_user
         }
         response = self.send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
@@ -193,7 +196,9 @@ class ITInventoryClient:
             '_snipeit_ip_address_9': self.ip_address,
             '_snipeit_total_storage_6': self.disk_size,
             '_snipeit_storage_information_7': self.disk_info,
-            '_snipeit_processor_cpu_8': self.processor
+            '_snipeit_processor_cpu_8': self.processor,
+            '_snipeit_bios_release_date_10': self.bios_release_date,
+            '_snipeit_windows_username_11': self.current_user
         }
         response = self.send_request('PATCH', endpoint, payload=payload)
         if response.get('status') == 'success':
@@ -276,6 +281,7 @@ def main():
           MAC Address: {it_client.mac_addresses}
           Processor: {it_client.processor}
           Current User: {it_client.current_user}
+          BIOS Release Date: {it_client.bios_release_date}
           """)
     
     # Get the manufacturer
