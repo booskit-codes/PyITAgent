@@ -3,7 +3,8 @@
         "_snipeit_mac_address_1": true,
         "_snipeit_total_storage_6": true,
         "_snipeit_storage_information_7": true,
-        "_snipeit_disk_space_used_13": true
+        "_snipeit_disk_space_used_13": true,
+        "_snipeit_pyitagent_14": true
     },
     "custom_fields": {
         "_snipeit_operating_system_3": {

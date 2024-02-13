@@ -1,3 +1,7 @@
+__author__ = 'Booskit'
+__version__ = '1.2-nightly'
+__description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
+
 import requests
 import subprocess
 import configparser
@@ -36,6 +40,7 @@ class ITInventoryClient:
                             self.hardware_info[field] = self.disk_info
                         elif field == "_snipeit_disk_space_used_13" and is_enabled:
                             self.hardware_info[field] = self.disk_used
+                    case "_snipeit_pyitagent_14": self.hardware_info[field] = __version__
         dynamic_fields = self.custom_fields["custom_fields"]
         for field, value in dynamic_fields.items():
             if value["enabled"] is False:
