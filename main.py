@@ -5,14 +5,15 @@ import os
 import sys
 
 class ITInventoryClient:
-    def __init__(self, url, access_token):
-        self.access_token = access_token
+    def __init__(self, config):
+        self.config = config
+        self.access_token = config['DEFAULT']['api_key']
         self.headers = {
             "accept": "application/json",
             "Authorization": f"Bearer {self.access_token}",
             "content-type": "application/json"
         }
-        self.url_prefix = url
+        self.url_prefix = config['DEFAULT']['site']
         self.manufacturer = self.run_command("(gwmi win32_computersystem).manufacturer")
         self.serial_number = self.determine_serial_number()
         self.hostname = self.run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
@@ -147,7 +148,7 @@ class ITInventoryClient:
                 manufacturer_id = self.get_manufacturer(manufacturer_name)
         return manufacturer_id
     
-    def post_model(self, manufacturer_id, category_id=3, fieldset_id=1):
+    def post_model(self, manufacturer_id, category_id = 3, fieldset_id = 1):
         endpoint = 'models'
         values = {
             'manufacturer_id': manufacturer_id,
@@ -177,7 +178,7 @@ class ITInventoryClient:
         model_id = self.get_model(self.model)
         if model_id is None:
             print("Creating new model")
-            success = self.post_model(manufacturer_id)
+            success = self.post_model(manufacturer_id, self.config['GENERAL']['snipeit_category_id'], self.config['GENERAL']['snipeit_fieldset_id'])
             if success:
                 model_id = self.get_model(self.model)
         return model_id
@@ -275,11 +276,7 @@ def main():
 
     # VV Seriously just don't change any of this. VV
     config = get_config()
-
-    url = config['DEFAULT']['site']
-    api_key = config['DEFAULT']['api_key']
-
-    it_client = ITInventoryClient(url, api_key)
+    it_client = ITInventoryClient(config)
     # ΛΛ Seriously just don't change any of this. ΛΛ
     
     # This will serve as both debugging purposes & just general information, nothing bad with information.
