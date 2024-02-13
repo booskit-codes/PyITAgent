@@ -16,6 +16,10 @@ The program automatically collects and sends the following information from your
 - Storage Information (`_snipeit_storage_information_7`)
 - Processor / CPU (`_snipeit_processor_cpu_8`)
 - IP Address (`_snipeit_ip_address_9`)
+- BIOS Release Date (`_snipeit_bios_release_date_10`)
+- Windows Username (`_snipeit_windows_username_11`)
+- RAM Usage (`_snipeit_ram_used_12`)
+- Disk Space Used (`_snipeit_disk_space_used_13`)
 
 [Download the latest version here](https://github.com/booskit-codes/PyITAgent/releases/).
 
