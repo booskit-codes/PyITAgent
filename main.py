@@ -3,9 +3,10 @@ import subprocess
 import configparser
 import os
 import sys
+import json
 
 class ITInventoryClient:
-    def __init__(self, config):
+    def __init__(self, config, custom_fields):
         self.config = config
         self.access_token = config['DEFAULT']['api_key']
         self.headers = {
@@ -14,44 +15,48 @@ class ITInventoryClient:
             "content-type": "application/json"
         }
         self.url_prefix = config['DEFAULT']['site']
-        self.manufacturer = self.run_command("(gwmi win32_computersystem).manufacturer")
+        self.manufacturer = self.determine_manufacturer()
         self.serial_number = self.determine_serial_number()
         self.hostname = self.run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
-        self.os = self.run_command("(Get-WmiObject Win32_OperatingSystem).Caption")
-        self.ram_available = self.run_command("[Math]::Round((Get-WmiObject Win32_ComputerSystem).totalphysicalmemory / 1gb,1)")
-        self.ram_used = self.run_command("[Math]::Round(((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory - (Get-WmiObject Win32_OperatingSystem).FreePhysicalMemory * 1024) / 1GB, 2)")
-        self.os_install_date = self.run_command("[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_OperatingSystem).InstallDate).TotalSeconds)")
-        self.bios_release_date = self.run_command("[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_BIOS).ReleaseDate).TotalSeconds)")
         self.model_number, self.model = self.determine_model_info()
-        self.ip_address = self.run_command("(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString")
-        self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
-        self.mac_addresses = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
-        self.processor = self.run_command("(gwmi Win32_processor).name")
-        self.current_user = self.run_command("[System.Security.Principal.WindowsIdentity]::GetCurrent().Name")
+        self.custom_fields = custom_fields
+        self.hardware_info = {}
+
+    def collect_hardware_data(self):
+        static_fields = self.custom_fields["enabled_static_fields"]
+        for field, is_enabled in static_fields.items():
+            if is_enabled:
+                match field:
+                    case "_snipeit_mac_address_1": self.hardware_info[field] = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
+                    case "_snipeit_total_storage_6" | "_snipeit_storage_information_7" | "_snipeit_disk_space_used_13":
+                        self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
+                        if field == "_snipeit_total_storage_6" and is_enabled:
+                            self.hardware_info[field] = self.disk_size
+                        elif field == "_snipeit_storage_information_7" and is_enabled:
+                            self.hardware_info[field] = self.disk_info
+                        elif field == "_snipeit_disk_space_used_13" and is_enabled:
+                            self.hardware_info[field] = self.disk_used
+        dynamic_fields = self.custom_fields["custom_fields"]
+        for field, value in dynamic_fields.items():
+            if value["enabled"] is False:
+                continue
+            result = self.run_command(value["ps_command"])
+            self.hardware_info[field] = result
 
     def resolve_payload(self, type, values):
         match type:
             case "hardware":
-                return {
+                hardware = {
                     'serial': values['serial_number'],
                     'name': self.hostname,
                     'asset_tag': values['serial_number'],
                     'status_id': values['status_id'],
                     'model_id': values['model_id'],
-                    'company_id': values['company_id'],
-                    '_snipeit_mac_address_1': self.mac_addresses,
-                    '_snipeit_memory_ram_2': self.ram_available,
-                    '_snipeit_operating_system_3': self.os,
-                    '_snipeit_os_install_date_4': self.os_install_date,
-                    '_snipeit_ip_address_9': self.ip_address,
-                    '_snipeit_total_storage_6': self.disk_size,
-                    '_snipeit_storage_information_7': self.disk_info,
-                    '_snipeit_processor_cpu_8': self.processor,
-                    '_snipeit_bios_release_date_10': self.bios_release_date,
-                    '_snipeit_windows_username_11': self.current_user,
-                    '_snipeit_ram_used_12': self.ram_used,
-                    '_snipeit_disk_space_used_13': self.disk_used
+                    'company_id': values['company_id']
                 }
+                for field, value in self.hardware_info.items():
+                    hardware[field] = value
+                return hardware
             case "model":
                 return {
                     "name": self.model,
@@ -68,6 +73,13 @@ class ITInventoryClient:
     def run_command(self, cmd):
         completed = subprocess.run(["powershell.exe", "-Command", cmd], capture_output=True)
         return completed.stdout.decode("utf-8").strip()
+    
+    def determine_manufacturer(self):
+        manufacturer = self.run_command("(gwmi win32_computersystem).manufacturer")
+        # Specific case for HP and Hewlett-Packard
+        if manufacturer == "Hewlett-Packard":
+            manufacturer = "HP"
+        return manufacturer
 
     def determine_serial_number(self):
         serial_number = self.run_command("(gwmi win32_baseboard).serialnumber")
@@ -272,34 +284,27 @@ def get_config():
     config.read(config_path)
     return config
 
+def get_custom_fields():
+    custom_fields_path = resolve_path('custom_fields.json')
+
+    if not os.path.exists(custom_fields_path):
+        print("custom_fields.json not found. Please create it at:", custom_fields_path)
+        return None
+    
+    with open(custom_fields_path, 'r') as file:
+        return json.load(file)
+
 def main():
 
     # VV Seriously just don't change any of this. VV
     config = get_config()
-    it_client = ITInventoryClient(config)
+    custom_fields = get_custom_fields()
+    it_client = ITInventoryClient(config, custom_fields)
+    it_client.collect_hardware_data()
     # ΛΛ Seriously just don't change any of this. ΛΛ
-    
-    # This will serve as both debugging purposes & just general information, nothing bad with information.
-    print(f"""
-          Hardware Information
-          -------------------------
-          
-          Manufacturer: {it_client.manufacturer}
-          Serial Number: {it_client.serial_number}
-          Hostname: {it_client.hostname}
-          OS: {it_client.os}
-          Ram Available: {it_client.ram_available}
-          Ram Used: {it_client.ram_used}
-          OS Install Date: {it_client.os_install_date}
-          Model Number: {it_client.model_number}
-          IP Address: {it_client.ip_address}
-          Disk Size: {it_client.disk_size}
-          Disk Used: {it_client.disk_used}
-          MAC Address: {it_client.mac_addresses}
-          Processor: {it_client.processor}
-          Current User: {it_client.current_user}
-          BIOS Release Date: {it_client.bios_release_date}
-          """)
+
+    # Debugging data! Case you need it!
+    print(it_client.hardware_info)
     
     # Get the manufacturer
     manufacturer_id = it_client.get_or_create_manufacturer(it_client.manufacturer)
