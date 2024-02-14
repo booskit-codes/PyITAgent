@@ -8,6 +8,7 @@ import configparser
 import os
 import sys
 import json
+import traceback
 
 class ITInventoryClient:
     def __init__(self, config, custom_fields):
@@ -141,7 +142,7 @@ class ITInventoryClient:
                 print("No manufacturer found in database, perhaps create a new one?")
                 return None
         except KeyError:
-            return None
+            raise
         
     def post_manufacturer(self, manufacturer_name):
         endpoint = 'manufacturers'
@@ -153,8 +154,7 @@ class ITInventoryClient:
         if response.get('status') == 'success':
             return True
         else:
-            print(f"Failed to post manufacturer: {response.get('messages')}")
-            return False
+            raise Exception(f"Failed to post manufacturer: {response.get('messages')}")
 
     def get_or_create_manufacturer(self, manufacturer_name):
         manufacturer_id = self.get_manufacturer(manufacturer_name)
@@ -177,8 +177,7 @@ class ITInventoryClient:
         if response.get('status') == 'success':
             return True
         else:
-            print(f"Failed to post model: {response.get('messages')}")
-            return False
+            raise Exception(f"Failed to post model: {response.get('messages')}")
 
     def get_model(self, model_name):
         endpoint = f'models?limit=1&search={model_name}&sort=name'
@@ -187,7 +186,7 @@ class ITInventoryClient:
             if response['total'] != 0:
                 return response['rows'][0]['id']
         except KeyError:
-            return None
+            raise
         print("No model found in database, perhaps create a new one?")
         return None
     
@@ -213,8 +212,7 @@ class ITInventoryClient:
         if response.get('status') == 'success':
             return True
         else:
-            print(f"Failed to post hardware: {response.get('messages')}")
-            return False
+            raise Exception(f"Failed to post hardware: {response.get('messages')}")
 
     def get_hardware(self, serial_number):
         endpoint = f'hardware/byserial/{serial_number}?deleted=false'
@@ -223,7 +221,7 @@ class ITInventoryClient:
             if response['total'] != 0:
                 return response['rows'][0]['id']
         except KeyError:
-            return None
+            raise
         print("No hardware found in database, perhaps create a new one?")
         return None
     
@@ -298,39 +296,65 @@ def get_custom_fields():
     
     with open(custom_fields_path, 'r') as file:
         return json.load(file)
+    
+def send_to_slack(message, webhook_url):
+    payload = {
+        'text': message,
+        'username': 'PyITAgent',
+        'icon_emoji': 'hammer_and_wrench',
+        }
+    try:
+        response = requests.post(webhook_url, json=payload)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message to Slack: {e}")
 
 def main():
+    try:
+        # VV Seriously just don't change any of this. VV
+        config = get_config()
+        custom_fields = get_custom_fields()
+        it_client = ITInventoryClient(config, custom_fields)
+        it_client.collect_hardware_data()
+        # ΛΛ Seriously just don't change any of this. ΛΛ
 
-    # VV Seriously just don't change any of this. VV
-    config = get_config()
-    custom_fields = get_custom_fields()
-    it_client = ITInventoryClient(config, custom_fields)
-    it_client.collect_hardware_data()
-    # ΛΛ Seriously just don't change any of this. ΛΛ
+        # Debugging data! Case you need it!
+        print(it_client.hardware_info)
+        
+        # Get the manufacturer
+        manufacturer_id = it_client.get_or_create_manufacturer(it_client.manufacturer)
+        if manufacturer_id is None:
+            return print("Failed to fetch manufacturer")
+        print("Manufacturer fetched: ", manufacturer_id)
 
-    # Debugging data! Case you need it!
-    print(it_client.hardware_info)
-    
-    # Get the manufacturer
-    manufacturer_id = it_client.get_or_create_manufacturer(it_client.manufacturer)
-    if manufacturer_id is None:
-        return print("Failed to fetch manufacturer")
-    print("Manufacturer fetched: ", manufacturer_id)
+        # Get the model
+        model_id = it_client.get_or_create_model(manufacturer_id)
+        if model_id is None:
+            return print("Failed to fetch model")
+        print("Model fetched: ", model_id)
 
-    # Get the model
-    model_id = it_client.get_or_create_model(manufacturer_id)
-    if model_id is None:
-        return print("Failed to fetch model")
-    print("Model fetched: ", model_id)
+        # Get the hardware, if it exists, update it properly.
+        snipeit_status_id = config['GENERAL']['snipeit_status_id']
+        snipeit_company_id = config['GENERAL']['snipeit_company_id']
+        update_hardware = True
+        hardware_id = it_client.get_or_create_hardware(model_id, update_hardware, snipeit_status_id, snipeit_company_id)
+        if hardware_id is None:
+            return print("Failed to fetch hardware")
+        print("Hardware fetched: ", hardware_id)
 
-    # Get the hardware, if it exists, update it properly.
-    snipeit_status_id = config['GENERAL']['snipeit_status_id']
-    snipeit_company_id = config['GENERAL']['snipeit_company_id']
-    update_hardware = True
-    hardware_id = it_client.get_or_create_hardware(model_id, update_hardware, snipeit_status_id, snipeit_company_id)
-    if hardware_id is None:
-        return print("Failed to fetch hardware")
-    print("Hardware fetched: ", hardware_id)
+    except Exception as e:
+        config = get_config()
+        hostname = subprocess.run(["powershell.exe", "-Command", "(Get-WmiObject Win32_OperatingSystem).CSName"], capture_output=True).stdout.decode("utf-8").strip()
+        windows_user = subprocess.run(["powershell.exe", "-Command", "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name"], capture_output=True).stdout.decode("utf-8").strip()
+        error_message = f"An error occurred in the ITInventoryClient script: {e}\n"
+        error_message += f"Error occured on computer: {hostname}\n"
+        error_message += f"Error occured on user: {windows_user}\n"
+        error_message += "```"  # Slack formatting for code blocks
+        error_message += traceback.format_exc()
+        error_message += "```"
+        slack_webhook_url = config['DEBUGGING']['slack_webhook']  # Replace with your actual Slack webhook URL
+        send_to_slack(error_message, slack_webhook_url)
+        raise  # Optionally re-raise the exception if you want the script to stop on error
 
 if __name__ == "__main__":
     main()
