@@ -41,10 +41,13 @@ For those that wish to add, modify or edit their custom fields, you can do so in
 
 Fields categorized under **enabled_static_fields** cannot be modified, but can be freely disabled or enabled.
 
-For example, if you wish to disable the collection of your MAC Address, you can do so by modifying the JSON file like so:
+For example, if you wish to disable the collection of your MAC Address or change the db field, you can do so by modifying the JSON file like so:
 
 ```json
-"_snipeit_mac_address_1": false,
+"mac_address": {
+    "enabled": false,
+    "field_name": "_snipeit_mac_address_3"
+},
 ```
 
 All other custom fields can be modified under the **custom_fields** section and you can freely add more fields as well. It uses powershell commands to collect information from your computer.

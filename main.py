@@ -28,19 +28,19 @@ class ITInventoryClient:
 
     def collect_hardware_data(self):
         static_fields = self.custom_fields["enabled_static_fields"]
-        for field, is_enabled in static_fields.items():
-            if is_enabled:
+        for field, value in static_fields.items():
+            if value["enabled"]:
                 match field:
-                    case "_snipeit_mac_address_1": self.hardware_info[field] = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
-                    case "_snipeit_total_storage_6" | "_snipeit_storage_information_7" | "_snipeit_disk_space_used_13":
+                    case "mac_address": self.hardware_info[value["field_name"]] = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
+                    case "total_storage" | "storage_information" | "disk_space_used":
                         self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
-                        if field == "_snipeit_total_storage_6" and is_enabled:
-                            self.hardware_info[field] = self.disk_size
-                        elif field == "_snipeit_storage_information_7" and is_enabled:
-                            self.hardware_info[field] = self.disk_info
-                        elif field == "_snipeit_disk_space_used_13" and is_enabled:
-                            self.hardware_info[field] = self.disk_used
-                    case "_snipeit_pyitagent_14": self.hardware_info[field] = __version__
+                        if field == "total_storage":
+                            self.hardware_info[value["field_name"]] = self.disk_size
+                        elif field == "storage_information":
+                            self.hardware_info[value["field_name"]] = self.disk_info
+                        elif field == "disk_space_used":
+                            self.hardware_info[value["field_name"]] = self.disk_used
+                    case "pyitagent_version": self.hardware_info[value["field_name"]] = __version__
         dynamic_fields = self.custom_fields["custom_fields"]
         for field, value in dynamic_fields.items():
             if value["enabled"] is False:

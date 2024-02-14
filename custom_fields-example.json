@@ -1,10 +1,25 @@
 {
     "enabled_static_fields": {
-        "_snipeit_mac_address_1": true,
-        "_snipeit_total_storage_6": true,
-        "_snipeit_storage_information_7": true,
-        "_snipeit_disk_space_used_13": true,
-        "_snipeit_pyitagent_14": true
+        "mac_address": {
+            "enabled": true,
+            "field_name": "_snipeit_mac_address_1"
+        },
+        "total_storage": {
+            "enabled": true,
+            "field_name": "_snipeit_total_storage_6"
+        },
+        "storage_information": {
+            "enabled": true,
+            "field_name": "_snipeit_storage_information_7"
+        },
+        "disk_space_used": {
+            "enabled": true,
+            "field_name": "_snipeit_disk_space_used_13"
+        },
+        "pyitagent_version": {
+            "enabled": true,
+            "field_name": "_snipeit_pyitagent_14"
+        }
     },
     "custom_fields": {
         "_snipeit_operating_system_3": {
