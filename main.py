@@ -273,7 +273,7 @@ def get_config():
     
     if not os.path.exists(config_path):
         # config.ini does not exist, you can generate a default one or notify the user to create it
-        print("config.ini not found. Please create it at:", config_path)
+        input("config.ini not found. Please create it at:", config_path)
         # Example code to generate a default config.ini, uncomment and modify as needed
         # config = configparser.ConfigParser()
         # config['DEFAULT'] = {'Setting1': 'Value1', 'Setting2': 'Value2'}
@@ -291,7 +291,7 @@ def get_custom_fields():
     custom_fields_path = resolve_path('custom_fields.json')
 
     if not os.path.exists(custom_fields_path):
-        print("custom_fields.json not found. Please create it at:", custom_fields_path)
+        input("custom_fields.json not found. Please create it at:", custom_fields_path)
         return None
     
     with open(custom_fields_path, 'r') as file:
