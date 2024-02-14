@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.2a'
+__version__ = '1.3-nightly'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -9,6 +9,8 @@ import os
 import sys
 import json
 import traceback
+import subprocess
+import ctypes
 
 class ITInventoryClient:
     def __init__(self, config, custom_fields):
@@ -77,8 +79,22 @@ class ITInventoryClient:
                 }
 
     def run_command(self, cmd):
-        completed = subprocess.run(["powershell.exe", "-Command", cmd], capture_output=True)
-        return completed.stdout.decode("utf-8").strip()
+        # The flag to prevent the console window from showing up
+        CREATE_NO_WINDOW = 0x08000000
+        
+        # Execute the command without showing a window
+        completed = subprocess.Popen(["powershell.exe", "-Command", cmd],
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    text=True,
+                                    creationflags=CREATE_NO_WINDOW)
+        
+        # Wait for the command to complete and get the output
+        stdout, stderr = completed.communicate()
+        
+        # Return the standard output
+        return stdout.strip()
+
     
     def determine_manufacturer(self):
         manufacturer = self.run_command("(gwmi win32_computersystem).manufacturer")
