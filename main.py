@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.2'
+__version__ = '1.2a'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -135,14 +135,18 @@ class ITInventoryClient:
     def get_manufacturer(self, manufacturer_name):
         endpoint = f'manufacturers?name={manufacturer_name}'
         response = self.send_request('GET', endpoint)
-        try:
-            if response['total'] != 0:
+        # Check for API error response
+        if response.get('status') == 'error':
+            print("API Error:", response.get('messages', 'Unknown error'))
+            return None
+        # Handle case where 'total' key is missing or 0
+        if response.get('total', 0) != 0:
+            try:
                 return response['rows'][0]['id']
-            else:
-                print("No manufacturer found in database, perhaps create a new one?")
-                return None
-        except KeyError:
-            raise
+            except (KeyError, IndexError):
+                raise KeyError("Unexpected response format or empty 'rows'")
+        else:
+            raise Exception(f"Failed to get hardware: {response.get('messages')}")
         
     def post_manufacturer(self, manufacturer_name):
         endpoint = 'manufacturers'
@@ -182,13 +186,18 @@ class ITInventoryClient:
     def get_model(self, model_name):
         endpoint = f'models?limit=1&search={model_name}&sort=name'
         response = self.send_request('GET', endpoint)
-        try:
-            if response['total'] != 0:
+        # Check for API error response
+        if response.get('status') == 'error':
+            print("API Error:", response.get('messages', 'Unknown error'))
+            return None
+        # Handle case where 'total' key is missing or 0
+        if response.get('total', 0) != 0:
+            try:
                 return response['rows'][0]['id']
-        except KeyError:
-            raise
-        print("No model found in database, perhaps create a new one?")
-        return None
+            except (KeyError, IndexError):
+                raise KeyError("Unexpected response format or empty 'rows'")
+        else:
+            raise Exception(f"Failed to get model: {response.get('messages')}")
     
     def get_or_create_model(self, manufacturer_id):
         model_id = self.get_model(self.model)
@@ -217,13 +226,19 @@ class ITInventoryClient:
     def get_hardware(self, serial_number):
         endpoint = f'hardware/byserial/{serial_number}?deleted=false'
         response = self.send_request('GET', endpoint)
-        try:
-            if response['total'] != 0:
+        # Check for API error response
+        if response.get('status') == 'error':
+            print("API Error:", response.get('messages', 'Unknown error'))
+            return None
+        # Handle case where 'total' key is missing or 0
+        if response.get('total', 0) != 0:
+            try:
                 return response['rows'][0]['id']
-        except KeyError:
-            raise
-        print("No hardware found in database, perhaps create a new one?")
-        return None
+            except (KeyError, IndexError):
+                raise KeyError("Unexpected response format or empty 'rows'")
+        else:
+            raise Exception(f"Failed to get hardware: {response.get('messages')}")
+
     
     def patch_hardware(self, hardware_id, serial_number, model_id, status_id, company_id):
         endpoint = f'hardware/{hardware_id}?deleted=false'
