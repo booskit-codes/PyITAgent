@@ -1,0 +1,66 @@
+{
+    "enabled_static_fields": {
+        "mac_address": {
+            "enabled": true,
+            "field_name": "_snipeit_mac_address_1"
+        },
+        "total_storage": {
+            "enabled": true,
+            "field_name": "_snipeit_total_storage_6"
+        },
+        "storage_information": {
+            "enabled": true,
+            "field_name": "_snipeit_storage_information_7"
+        },
+        "disk_space_used": {
+            "enabled": true,
+            "field_name": "_snipeit_disk_space_used_13"
+        },
+        "pyitagent_version": {
+            "enabled": true,
+            "field_name": "_snipeit_pyitagent_14"
+        }
+    },
+    "custom_fields": {
+        "_snipeit_operating_system_3": {
+            "name": "Operating System",
+            "enabled": true,
+            "ps_command": "(Get-WmiObject Win32_OperatingSystem).Caption"
+        },
+        "_snipeit_os_install_date_4": {
+            "name": "OS Install Date",
+            "enabled": true,
+            "ps_command": "[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_OperatingSystem).InstallDate).TotalSeconds)"
+        },
+        "_snipeit_memory_ram_2": {
+            "name": "Memory / RAM",
+            "enabled": true,
+            "ps_command": "[Math]::Round((Get-WmiObject Win32_ComputerSystem).totalphysicalmemory / 1gb,1)"
+        },
+        "_snipeit_ram_used_12": {
+            "name": "RAM Usage",
+            "enabled": true,
+            "ps_command": "[Math]::Round(((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory - (Get-WmiObject Win32_OperatingSystem).FreePhysicalMemory * 1024) / 1GB, 2)"
+        },
+        "_snipeit_bios_release_date_10": {
+            "name": "BIOS Release Date",
+            "enabled": true,
+            "ps_command": "[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_BIOS).ReleaseDate).TotalSeconds)"
+        },
+        "_snipeit_ip_address_9": {
+            "name": "IP Address",
+            "enabled": true,
+            "ps_command": "(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString"
+        },
+        "_snipeit_processor_cpu_8": {
+            "name": "Processor / CPU",
+            "enabled": true,
+            "ps_command": "(gwmi Win32_processor).name"
+        },
+        "_snipeit_windows_username_11": {
+            "name": "Windows Username",
+            "enabled": true,
+            "ps_command": "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name"
+        }
+    }
+}
