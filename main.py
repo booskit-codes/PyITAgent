@@ -162,7 +162,7 @@ class ITInventoryClient:
             except (KeyError, IndexError):
                 raise KeyError("Unexpected response format or empty 'rows'")
         else:
-            raise Exception(f"Failed to get hardware: {response.get('messages')}")
+            return None
         
     def post_manufacturer(self, manufacturer_name):
         endpoint = 'manufacturers'
@@ -213,7 +213,7 @@ class ITInventoryClient:
             except (KeyError, IndexError):
                 raise KeyError("Unexpected response format or empty 'rows'")
         else:
-            raise Exception(f"Failed to get model: {response.get('messages')}")
+            return None
     
     def get_or_create_model(self, manufacturer_id):
         model_id = self.get_model(self.model)
@@ -253,7 +253,7 @@ class ITInventoryClient:
             except (KeyError, IndexError):
                 raise KeyError("Unexpected response format or empty 'rows'")
         else:
-            raise Exception(f"Failed to get hardware: {response.get('messages')}")
+            return None
 
     
     def patch_hardware(self, hardware_id, serial_number, model_id, status_id, company_id):
