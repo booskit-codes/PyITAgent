@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.3-nightly2'
+__version__ = '1.3-nightly3'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -24,7 +24,7 @@ class ITInventoryClient:
         self.url_prefix = config['DEFAULT']['site']
         self.manufacturer = self.determine_manufacturer()
         self.serial_number = self.determine_serial_number()
-        self.hostname = self.run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
+        self.hostname = run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
         self.model_number, self.model = self.determine_model_info()
         self.custom_fields = custom_fields
         self.hardware_info = {}
@@ -34,7 +34,7 @@ class ITInventoryClient:
         for field, value in static_fields.items():
             if value["enabled"]:
                 match field:
-                    case "mac_address": self.hardware_info[value["field_name"]] = self.run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
+                    case "mac_address": self.hardware_info[value["field_name"]] = run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
                     case "total_storage" | "storage_information" | "disk_space_used":
                         self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
                         if field == "total_storage":
@@ -48,7 +48,7 @@ class ITInventoryClient:
         for field, value in dynamic_fields.items():
             if value["enabled"] is False:
                 continue
-            result = self.run_command(value["ps_command"])
+            result = run_command(value["ps_command"])
             self.hardware_info[field] = result
 
     def resolve_payload(self, type, values):
@@ -77,59 +77,41 @@ class ITInventoryClient:
                 return {
                     values['manufacturer_name']
                 }
-
-    def run_command(self, cmd):
-        # The flag to prevent the console window from showing up
-        CREATE_NO_WINDOW = 0x08000000
-        
-        # Execute the command without showing a window
-        completed = subprocess.Popen(["powershell.exe", "-Command", cmd],
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    text=True,
-                                    creationflags=CREATE_NO_WINDOW)
-        
-        # Wait for the command to complete and get the output
-        stdout, stderr = completed.communicate()
-        
-        # Return the standard output
-        return stdout.strip()
-
     
     def determine_manufacturer(self):
-        manufacturer = self.run_command("(gwmi win32_computersystem).manufacturer")
+        manufacturer = run_command("(gwmi win32_computersystem).manufacturer")
         # Specific case for HP and Hewlett-Packard
         if manufacturer == "Hewlett-Packard":
             manufacturer = "HP"
         return manufacturer
 
     def determine_serial_number(self):
-        serial_number = self.run_command("(gwmi win32_baseboard).serialnumber")
+        serial_number = run_command("(gwmi win32_baseboard).serialnumber")
         if self.manufacturer == 'Dell Inc.':
             return serial_number.split('/')[1]
         elif self.manufacturer == 'HP':
-            return self.run_command('(gwmi win32_bios).serialnumber')
+            return run_command('(gwmi win32_bios).serialnumber')
         return serial_number
 
     def determine_model_info(self):
-        model_number = self.run_command("(gwmi win32_baseboard).product")
-        model = self.run_command("(Get-WmiObject -Class:Win32_ComputerSystem).Model")
+        model_number = run_command("(gwmi win32_baseboard).product")
+        model = run_command("(Get-WmiObject -Class:Win32_ComputerSystem).Model")
         if self.manufacturer == 'Lenovo':
             return model, model_number
         return model_number, model
 
     def determine_disk_info(self):
-        disk_size = self.run_command("""
+        disk_size = run_command("""
         $total=0
         (Get-WmiObject -Class Win32_DiskDrive | Where-Object { $_.MediaType -eq 'Fixed hard disk media' }).Size | foreach-object { $total=$total+$_/1gb }
         [Math]::Round($total, 2)
         """)
-        disk_info = self.run_command("""
+        disk_info = run_command("""
         (Get-WmiObject -Class Win32_DiskDrive | Where-Object { $_.MediaType -eq 'Fixed hard disk media' }) | ForEach-Object{
             echo "$($_.MediaType) - $($_.Model) - $($_.SerialNumber) - $([Math]::Round($_.Size/1gb,2)) GB"
         }
         """)
-        disk_used = self.run_command("[Math]::Round(((Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").Size - (Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").FreeSpace) / 1GB, 2)")
+        disk_used = run_command("[Math]::Round(((Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").Size - (Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").FreeSpace) / 1GB, 2)")
         return disk_size, disk_info, disk_used
 
     def send_request(self, method, endpoint, payload=None):
@@ -318,6 +300,23 @@ def get_config():
     config.read(config_path)
     return config
 
+def run_command(cmd):
+    # The flag to prevent the console window from showing up
+    CREATE_NO_WINDOW = 0x08000000
+    
+    # Execute the command without showing a window
+    completed = subprocess.Popen(["powershell.exe", "-Command", cmd],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True,
+                                creationflags=CREATE_NO_WINDOW)
+    
+    # Wait for the command to complete and get the output
+    stdout, stderr = completed.communicate()
+    
+    # Return the standard output
+    return stdout.strip()
+
 def get_custom_fields():
     custom_fields_path = resolve_path('custom_fields.json')
 
@@ -374,8 +373,8 @@ def main():
 
     except Exception as e:
         config = get_config()
-        hostname = subprocess.run(["powershell.exe", "-Command", "(Get-WmiObject Win32_OperatingSystem).CSName"], capture_output=True).stdout.decode("utf-8").strip()
-        windows_user = subprocess.run(["powershell.exe", "-Command", "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name"], capture_output=True).stdout.decode("utf-8").strip()
+        hostname = run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
+        windows_user = run_command("[System.Security.Principal.WindowsIdentity]::GetCurrent().Name")
         error_message = f"An error occurred in the ITInventoryClient script: {e}\n"
         error_message += f"Error occured on computer: {hostname}\n"
         error_message += f"Error occured on user: {windows_user}\n"
@@ -384,7 +383,8 @@ def main():
         error_message += "```"
         slack_webhook_url = config['DEBUGGING']['slack_webhook']  # Replace with your actual Slack webhook URL
         send_to_slack(error_message, slack_webhook_url)
-        raise  # Optionally re-raise the exception if you want the script to stop on error
+        #raise  # Optionally re-raise the exception if you want the script to stop on error
+        sys.exit(1)  # Exit the script with an error status
 
 if __name__ == "__main__":
     main()
