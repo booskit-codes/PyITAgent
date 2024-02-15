@@ -10,7 +10,6 @@ import sys
 import json
 import traceback
 import subprocess
-import ctypes
 
 class ITInventoryClient:
     def __init__(self, config, custom_fields):
