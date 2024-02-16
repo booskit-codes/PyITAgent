@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.4-nightly1'
+__version__ = '1.4-nightly2'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -91,7 +91,7 @@ class ITInventoryClient:
         elif self.manufacturer == 'HP':
             return run_command('(gwmi win32_bios).serialnumber')
         if serial_number == "To be filled by O.E.M.":
-            return run_command('(gwmi win32_bios).serialnumber')
+            return None
         return serial_number
 
     def determine_model_info(self):
