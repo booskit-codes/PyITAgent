@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['main.py'],
+    ['debug.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -21,7 +21,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='PyITAgent',
+    name='PyITDebug',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -34,5 +34,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['app_icon.ico'],
 )

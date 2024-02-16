@@ -81,7 +81,13 @@ Testing or debugging custom fields / modifications to `custom_fields.json` can b
 If you have a python windows enviroment, you can do so via the following command:
 
 ```
-py ps.py
+py debug.py
+```
+
+You are also able to compile a debugger executable that will send debug info into slack. You can build it via the following command:
+
+```
+pyinstaller PyITDebug.spec
 ```
 
 ## Credits
