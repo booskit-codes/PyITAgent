@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.4-nightly2'
+__version__ = '1.4-nightly3'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -15,6 +15,7 @@ class ITInventoryClient:
     def __init__(self, config, custom_fields):
         self.config = config
         self.access_token = config['DEFAULT']['api_key']
+        self.hostname = run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
         self.headers = {
             "accept": "application/json",
             "Authorization": f"Bearer {self.access_token}",
@@ -23,7 +24,6 @@ class ITInventoryClient:
         self.url_prefix = config['DEFAULT']['site']
         self.manufacturer = self.determine_manufacturer()
         self.serial_number = self.determine_serial_number()
-        self.hostname = run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
         self.model_number, self.model = self.determine_model_info()
         self.custom_fields = custom_fields
         self.hardware_info = {}
