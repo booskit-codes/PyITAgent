@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.3-nightly3'
+__version__ = '1.3'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -74,7 +74,7 @@ class ITInventoryClient:
                 }
             case "manufacturer":
                 return {
-                    values['manufacturer_name']
+                    "name": values['manufacturer_name']
                 }
     
     def determine_manufacturer(self):
@@ -89,6 +89,8 @@ class ITInventoryClient:
         if self.manufacturer == 'Dell Inc.':
             return serial_number.split('/')[1]
         elif self.manufacturer == 'HP':
+            return run_command('(gwmi win32_bios).serialnumber')
+        if serial_number == "To be filled by O.E.M.":
             return run_command('(gwmi win32_bios).serialnumber')
         return serial_number
 
@@ -139,7 +141,10 @@ class ITInventoryClient:
         # Handle case where 'total' key is missing or 0
         if response.get('total', 0) != 0:
             try:
-                return response['rows'][0]['id']
+                res_handler = response['rows'][0]
+                if res_handler['name'] == manufacturer_name:
+                    return response['rows'][0]['id']
+                else: return None
             except (KeyError, IndexError):
                 raise KeyError("Unexpected response format or empty 'rows'")
         else:
@@ -190,7 +195,10 @@ class ITInventoryClient:
         # Handle case where 'total' key is missing or 0
         if response.get('total', 0) != 0:
             try:
-                return response['rows'][0]['id']
+                res_handler = response['rows'][0]
+                if res_handler['name'] == model_name:
+                    return response['rows'][0]['id']
+                else: return None
             except (KeyError, IndexError):
                 raise KeyError("Unexpected response format or empty 'rows'")
         else:
@@ -230,7 +238,10 @@ class ITInventoryClient:
         # Handle case where 'total' key is missing or 0
         if response.get('total', 0) != 0:
             try:
-                return response['rows'][0]['id']
+                res_handler = response['rows'][0]
+                if res_handler['serial'] == serial_number:
+                    return response['rows'][0]['id']
+                else: return None
             except (KeyError, IndexError):
                 raise KeyError("Unexpected response format or empty 'rows'")
         else:
