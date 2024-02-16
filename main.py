@@ -388,6 +388,7 @@ def main():
         error_message = f"An error occurred in the ITInventoryClient script: {e}\n"
         error_message += f"Error occured on computer: {hostname}\n"
         error_message += f"Error occured on user: {windows_user}\n"
+        error_message += f"Error occured on version: {__version__}\n"
         error_message += "```"  # Slack formatting for code blocks
         error_message += traceback.format_exc()
         error_message += "```"
