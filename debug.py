@@ -13,7 +13,32 @@ class PowerShellLogging:
         self.data = data
         self.manufacturer = self.determine_manufacturer()
         self.serial_number = self.determine_serial_number()
+        self.model_number, self.model = self.determine_model_info()
+        self.hostname = run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
+        self.custom_fields = data
         self.hardware = {}
+
+    def collect_hardware_data(self):
+        static_fields = self.custom_fields["enabled_static_fields"]
+        for field, value in static_fields.items():
+            if value["enabled"]:
+                match field:
+                    case "mac_address": self.hardware[value["field_name"]] = run_command("(Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object {$_.IPEnabled -eq $true} | Select-Object -First 1).MACAddress")
+                    case "total_storage" | "storage_information" | "disk_space_used":
+                        self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
+                        if field == "total_storage":
+                            self.hardware[value["field_name"]] = self.disk_size
+                        elif field == "storage_information":
+                            self.hardware[value["field_name"]] = self.disk_info
+                        elif field == "disk_space_used":
+                            self.hardware[value["field_name"]] = self.disk_used
+                    case "pyitagent_version": self.hardware[value["field_name"]] = "debug.py"
+        dynamic_fields = self.custom_fields["custom_fields"]
+        for field, value in dynamic_fields.items():
+            if value["enabled"] is False:
+                continue
+            result = run_command(value["ps_command"])
+            self.hardware[field] = result
 
     def determine_manufacturer(self):
         manufacturer = run_command("(gwmi win32_computersystem).manufacturer")
@@ -28,23 +53,30 @@ class PowerShellLogging:
             return serial_number.split('/')[1]
         elif self.manufacturer == 'HP':
             return run_command('(gwmi win32_bios).serialnumber')
+        if serial_number == "To be filled by O.E.M.":
+            return run_command('(gwmi win32_bios).serialnumber')
         return serial_number
 
-    def collect_hardware_data(self):
-        static_fields = self.data["enabled_static_fields"]
-        for field, value in static_fields.items():
-            if value["enabled"] is True:
-                print(f"{field} is enabled")
-            else:
-                print(f"{field} is disabled")
-        dynamic_fields = self.data["custom_fields"]
-        for field, value in dynamic_fields.items():
-            print(value)
-            if value["enabled"] is False:
-                continue
-            result = run_command(value["ps_command"])
-            print(f"{value["name"]}: {result}")
-            self.hardware[field] = result
+    def determine_model_info(self):
+        model_number = run_command("(gwmi win32_baseboard).product")
+        model = run_command("(Get-WmiObject -Class:Win32_ComputerSystem).Model")
+        if self.manufacturer == 'Lenovo':
+            return model, model_number
+        return model_number, model
+    
+    def determine_disk_info(self):
+        disk_size = run_command("""
+        $total=0
+        (Get-WmiObject -Class Win32_DiskDrive | Where-Object { $_.MediaType -eq 'Fixed hard disk media' }).Size | foreach-object { $total=$total+$_/1gb }
+        [Math]::Round($total, 2)
+        """)
+        disk_info = run_command("""
+        (Get-WmiObject -Class Win32_DiskDrive | Where-Object { $_.MediaType -eq 'Fixed hard disk media' }) | ForEach-Object{
+            echo "$($_.MediaType) - $($_.Model) - $($_.SerialNumber) - $([Math]::Round($_.Size/1gb,2)) GB"
+        }
+        """)
+        disk_used = run_command("[Math]::Round(((Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").Size - (Get-WmiObject Win32_LogicalDisk -Filter \"DeviceID='C:'\").FreeSpace) / 1GB, 2)")
+        return disk_size, disk_info, disk_used
 
     def resolve_payload(self, type, values):
         match type:
@@ -57,7 +89,7 @@ class PowerShellLogging:
                     'model_id': values['model_id'],
                     'company_id': values['company_id']
                 }
-                for field, value in self.hardware_info.items():
+                for field, value in self.hardware.items():
                     hardware[field] = value
                 return hardware
             case "model":
@@ -145,8 +177,6 @@ def debug():
     print(f"""
           Debug Results
           -------------------------
-          
-          Manufacturer: {ps.manufacturer}
           """)
     
     ps.collect_hardware_data()
@@ -160,6 +190,8 @@ def debug():
     debug_message += "```"  # Slack formatting for code blocks
     debug_message += f"Manufacturer: {ps.manufacturer}\n"
     debug_message += f"Serial Number: {ps.serial_number}\n"
+    debug_message += f"Model: {ps.model}\n"
+    debug_message += f"Model Number: {ps.model_number}\n"
     debug_message += f"Hardware: {str(ps.hardware)}"
     debug_message += "```"
     slack_webhook_url = config['DEBUGGING']['slack_webhook']  # Replace with your actual Slack webhook URL

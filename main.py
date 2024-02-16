@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.3'
+__version__ = '1.4-nightly1'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
