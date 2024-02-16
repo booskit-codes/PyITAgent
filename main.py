@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.4-nightly3'
+__version__ = '1.4-nightly4'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -57,9 +57,7 @@ class ITInventoryClient:
                     'serial': values['serial_number'],
                     'name': self.hostname,
                     'asset_tag': values['serial_number'],
-                    'status_id': values['status_id'],
-                    'model_id': values['model_id'],
-                    'company_id': values['company_id']
+                    'model_id': values['model_id']
                 }
                 for field, value in self.hardware_info.items():
                     hardware[field] = value
@@ -217,11 +215,11 @@ class ITInventoryClient:
         endpoint = 'hardware'
         values = {
             'serial_number': serial_number,
-            'status_id': status_id,
-            'model_id': model_id,
-            'company_id': company_id,
+            'model_id': model_id
         }
         payload = self.resolve_payload("hardware", values)
+        payload['company_id'] = company_id
+        payload['status_id'] = status_id
         response = self.send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
@@ -247,14 +245,12 @@ class ITInventoryClient:
         else:
             return None
 
-    
-    def patch_hardware(self, hardware_id, serial_number, model_id, status_id, company_id):
+
+    def patch_hardware(self, hardware_id, serial_number, model_id):
         endpoint = f'hardware/{hardware_id}?deleted=false'
         values = {
             'serial_number': serial_number,
-            'status_id': status_id,
-            'model_id': model_id,
-            'company_id': company_id,
+            'model_id': model_id
         }
         payload = self.resolve_payload("hardware", values)
         response = self.send_request('PATCH', endpoint, payload=payload)
@@ -274,7 +270,7 @@ class ITInventoryClient:
                 hardware_id = self.get_hardware(self.serial_number)
         if update_hardware:
             print("Patching hardware")
-            self.patch_hardware(hardware_id, self.serial_number, model_id, status_id, company_id)
+            self.patch_hardware(hardware_id, self.serial_number, model_id)
         return hardware_id
 
 # Resolve pyinstaller's stoopid windows executable path issue
