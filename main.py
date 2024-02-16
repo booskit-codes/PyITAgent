@@ -91,7 +91,7 @@ class ITInventoryClient:
         elif self.manufacturer == 'HP':
             return run_command('(gwmi win32_bios).serialnumber')
         if serial_number == "To be filled by O.E.M.":
-            return None
+            return self.hostname
         return serial_number
 
     def determine_model_info(self):
