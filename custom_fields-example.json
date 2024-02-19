@@ -25,42 +25,56 @@
         "_snipeit_operating_system_3": {
             "name": "Operating System",
             "enabled": true,
-            "ps_command": "(Get-WmiObject Win32_OperatingSystem).Caption"
+            "ps_command": "(Get-WmiObject Win32_OperatingSystem).Caption",
+            "float_number": false
         },
         "_snipeit_os_install_date_4": {
             "name": "OS Install Date",
             "enabled": true,
-            "ps_command": "[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_OperatingSystem).InstallDate).TotalSeconds)"
+            "ps_command": "[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_OperatingSystem).InstallDate).TotalSeconds)",
+            "float_number": false
         },
         "_snipeit_memory_ram_2": {
             "name": "Memory / RAM",
             "enabled": true,
-            "ps_command": "[Math]::Round((Get-WmiObject Win32_ComputerSystem).totalphysicalmemory / 1gb,1)"
+            "ps_command": "[Math]::Round((Get-WmiObject Win32_ComputerSystem).totalphysicalmemory / 1gb,1)",
+            "float_number": true
         },
         "_snipeit_ram_used_12": {
             "name": "RAM Usage",
             "enabled": true,
-            "ps_command": "[Math]::Round(((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory - (Get-WmiObject Win32_OperatingSystem).FreePhysicalMemory * 1024) / 1GB, 2)"
+            "ps_command": "[Math]::Round(((Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory - (Get-WmiObject Win32_OperatingSystem).FreePhysicalMemory * 1024) / 1GB, 2)",
+            "float_number": true
         },
         "_snipeit_bios_release_date_10": {
             "name": "BIOS Release Date",
             "enabled": true,
-            "ps_command": "[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_BIOS).ReleaseDate).TotalSeconds)"
+            "ps_command": "[math]::Round((New-TimeSpan -Start (Get-Date '1970-01-01') -End (Get-CimInstance Win32_BIOS).ReleaseDate).TotalSeconds)",
+            "float_number": false
         },
         "_snipeit_ip_address_9": {
             "name": "IP Address",
             "enabled": true,
-            "ps_command": "(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString"
+            "ps_command": "(Test-Connection (hostname) -count 1).IPv4Address.IPAddressToString",
+            "float_number": false
         },
         "_snipeit_processor_cpu_8": {
             "name": "Processor / CPU",
             "enabled": true,
-            "ps_command": "(gwmi Win32_processor).name"
+            "ps_command": "(gwmi Win32_processor).name",
+            "float_number": false
         },
         "_snipeit_windows_username_11": {
             "name": "Windows Username",
             "enabled": true,
-            "ps_command": "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name"
+            "ps_command": "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name",
+            "float_number": false
+        },
+        "_snipeit_cpu_usage_15": {
+            "name": "CPU Usage",
+            "enabled": false,
+            "ps_command": "$Samples = 5; $Interval = 1; $i=0; $Total=0; while ($i -lt $Samples) { $Total += (Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples.CookedValue; Start-Sleep -Seconds $Interval; $i++ }; $Average = $Total / $Samples; $Average",
+            "float_number": true
         }
     }
 }

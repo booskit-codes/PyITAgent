@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.3'
+__version__ = '1.4'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -15,6 +15,7 @@ class ITInventoryClient:
     def __init__(self, config, custom_fields):
         self.config = config
         self.access_token = config['DEFAULT']['api_key']
+        self.hostname = run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
         self.headers = {
             "accept": "application/json",
             "Authorization": f"Bearer {self.access_token}",
@@ -23,7 +24,6 @@ class ITInventoryClient:
         self.url_prefix = config['DEFAULT']['site']
         self.manufacturer = self.determine_manufacturer()
         self.serial_number = self.determine_serial_number()
-        self.hostname = run_command("(Get-WmiObject Win32_OperatingSystem).CSName")
         self.model_number, self.model = self.determine_model_info()
         self.custom_fields = custom_fields
         self.hardware_info = {}
@@ -37,17 +37,18 @@ class ITInventoryClient:
                     case "total_storage" | "storage_information" | "disk_space_used":
                         self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
                         if field == "total_storage":
-                            self.hardware_info[value["field_name"]] = self.disk_size
+                            self.hardware_info[value["field_name"]] = format_number(self.disk_size)
                         elif field == "storage_information":
                             self.hardware_info[value["field_name"]] = self.disk_info
                         elif field == "disk_space_used":
-                            self.hardware_info[value["field_name"]] = self.disk_used
+                            self.hardware_info[value["field_name"]] = format_number(self.disk_used)
                     case "pyitagent_version": self.hardware_info[value["field_name"]] = __version__
         dynamic_fields = self.custom_fields["custom_fields"]
         for field, value in dynamic_fields.items():
             if value["enabled"] is False:
                 continue
             result = run_command(value["ps_command"])
+            if value["float_number"] is True: result = format_number(result)
             self.hardware_info[field] = result
 
     def resolve_payload(self, type, values):
@@ -57,9 +58,7 @@ class ITInventoryClient:
                     'serial': values['serial_number'],
                     'name': self.hostname,
                     'asset_tag': values['serial_number'],
-                    'status_id': values['status_id'],
-                    'model_id': values['model_id'],
-                    'company_id': values['company_id']
+                    'model_id': values['model_id']
                 }
                 for field, value in self.hardware_info.items():
                     hardware[field] = value
@@ -91,7 +90,7 @@ class ITInventoryClient:
         elif self.manufacturer == 'HP':
             return run_command('(gwmi win32_bios).serialnumber')
         if serial_number == "To be filled by O.E.M.":
-            return run_command('(gwmi win32_bios).serialnumber')
+            return self.hostname
         return serial_number
 
     def determine_model_info(self):
@@ -217,11 +216,11 @@ class ITInventoryClient:
         endpoint = 'hardware'
         values = {
             'serial_number': serial_number,
-            'status_id': status_id,
-            'model_id': model_id,
-            'company_id': company_id,
+            'model_id': model_id
         }
         payload = self.resolve_payload("hardware", values)
+        payload['company_id'] = company_id
+        payload['status_id'] = status_id
         response = self.send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
@@ -247,14 +246,12 @@ class ITInventoryClient:
         else:
             return None
 
-    
-    def patch_hardware(self, hardware_id, serial_number, model_id, status_id, company_id):
+
+    def patch_hardware(self, hardware_id, serial_number, model_id):
         endpoint = f'hardware/{hardware_id}?deleted=false'
         values = {
             'serial_number': serial_number,
-            'status_id': status_id,
-            'model_id': model_id,
-            'company_id': company_id,
+            'model_id': model_id
         }
         payload = self.resolve_payload("hardware", values)
         response = self.send_request('PATCH', endpoint, payload=payload)
@@ -274,7 +271,7 @@ class ITInventoryClient:
                 hardware_id = self.get_hardware(self.serial_number)
         if update_hardware:
             print("Patching hardware")
-            self.patch_hardware(hardware_id, self.serial_number, model_id, status_id, company_id)
+            self.patch_hardware(hardware_id, self.serial_number, model_id)
         return hardware_id
 
 # Resolve pyinstaller's stoopid windows executable path issue
@@ -348,6 +345,21 @@ def send_to_slack(message, webhook_url):
     except requests.exceptions.RequestException as e:
         print(f"Error sending message to Slack: {e}")
 
+def format_number(val):
+    try:
+        # Try converting the input to a float, replacing commas with dots if necessary
+        number = float(val.replace(',', '.'))
+        # Check if the number is an integer by comparing it with its integer version
+        if number == int(number):
+            # If it's an integer, return the integer part
+            return str(int(number))
+        else:
+            # If it's a float, format it with a comma instead of a dot
+            return "{:.1f}".format(number).replace('.', ',')
+    except ValueError:
+        # If conversion to a float fails, return the original input
+        return val
+
 def main():
     try:
         # VV Seriously just don't change any of this. VV
@@ -388,6 +400,7 @@ def main():
         error_message = f"An error occurred in the ITInventoryClient script: {e}\n"
         error_message += f"Error occured on computer: {hostname}\n"
         error_message += f"Error occured on user: {windows_user}\n"
+        error_message += f"Error occured on version: {__version__}\n"
         error_message += "```"  # Slack formatting for code blocks
         error_message += traceback.format_exc()
         error_message += "```"
