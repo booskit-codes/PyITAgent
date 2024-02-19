@@ -1,5 +1,5 @@
 __author__ = 'Booskit'
-__version__ = '1.4-nightly4'
+__version__ = '1.4'
 __description__ = 'PyITAgent - Python agent for sending computer information to your Snipe-IT instance.'
 
 import requests
@@ -37,17 +37,18 @@ class ITInventoryClient:
                     case "total_storage" | "storage_information" | "disk_space_used":
                         self.disk_size, self.disk_info, self.disk_used = self.determine_disk_info()
                         if field == "total_storage":
-                            self.hardware_info[value["field_name"]] = self.disk_size
+                            self.hardware_info[value["field_name"]] = format_number(self.disk_size)
                         elif field == "storage_information":
                             self.hardware_info[value["field_name"]] = self.disk_info
                         elif field == "disk_space_used":
-                            self.hardware_info[value["field_name"]] = self.disk_used
+                            self.hardware_info[value["field_name"]] = format_number(self.disk_used)
                     case "pyitagent_version": self.hardware_info[value["field_name"]] = __version__
         dynamic_fields = self.custom_fields["custom_fields"]
         for field, value in dynamic_fields.items():
             if value["enabled"] is False:
                 continue
             result = run_command(value["ps_command"])
+            if value["float_number"] is True: result = format_number(result)
             self.hardware_info[field] = result
 
     def resolve_payload(self, type, values):
@@ -343,6 +344,21 @@ def send_to_slack(message, webhook_url):
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"Error sending message to Slack: {e}")
+
+def format_number(val):
+    try:
+        # Try converting the input to a float, replacing commas with dots if necessary
+        number = float(val.replace(',', '.'))
+        # Check if the number is an integer by comparing it with its integer version
+        if number == int(number):
+            # If it's an integer, return the integer part
+            return str(int(number))
+        else:
+            # If it's a float, format it with a comma instead of a dot
+            return "{:.1f}".format(number).replace('.', ',')
+    except ValueError:
+        # If conversion to a float fails, return the original input
+        return val
 
 def main():
     try:
