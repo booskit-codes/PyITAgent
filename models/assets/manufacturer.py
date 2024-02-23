@@ -17,7 +17,6 @@ class Manufacturer:
         response = send_request('GET', endpoint)
         # Check for API error response
         if response.get('status') == 'error':
-            print("API Error:", response.get('messages', 'Unknown error'))
             return None
         # Handle case where 'total' key is missing or 0
         if response.get('total', 0) != 0:
@@ -46,7 +45,6 @@ class Manufacturer:
     def get_or_create_manufacturer(self):
         manufacturer_id = self.get_manufacturer(self.manufacturer_name)
         if manufacturer_id is None:
-            print("Creating new manufacturer")
             success = self.post_manufacturer(self.manufacturer_name)
             if success:
                 manufacturer_id = self.get_manufacturer(self.manufacturer_name)

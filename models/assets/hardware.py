@@ -76,7 +76,6 @@ class Hardware:
         response = send_request('GET', endpoint)
         # Check for API error response
         if response.get('status') == 'error':
-            print("API Error:", response.get('messages', 'Unknown error'))
             return None
         # Handle case where 'total' key is missing or 0
         if response.get('total', 0) != 0:
@@ -102,7 +101,6 @@ class Hardware:
         if response.get('status') == 'success':
             return True
         else:
-            print(f"Failed to update hardware: {response.get('messages')}")
             return False
     
     def get_or_create_hardware(self, metadata, hardware):
@@ -111,12 +109,10 @@ class Hardware:
         self.collect_hardware_data()
         hardware_id = self.get_hardware(self.serial_number)
         if hardware_id is None:
-            print("Creating new hardware")
             update_hardware = False
             success = self.post_hardware(self.serial_number, metadata['model_id'], metadata['hostname'], GlobalSettings().config['DEFAULTS']['snipeit_status_id'], GlobalSettings().config['DEFAULTS']['snipeit_company_id'])
             if success:
                 hardware_id = self.get_hardware(self.serial_number)
         if update_hardware:
-            print("Patching hardware")
             self.patch_hardware(hardware_id, self.serial_number, metadata['model_id'], metadata['hostname'])
         return hardware_id, self.collected_hardware
