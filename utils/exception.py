@@ -13,7 +13,6 @@ class ExceptionHandler:
         error_message = f"An error occurred in the PyITAgent script: {e}"
         print(error_message)
         config = GlobalSettings().config
-        print(config['DEBUGGING']['silent_mode'])
 
         if config['DEBUGGING']['slack_logging']:
             slack = SlackAPI()
