@@ -35,6 +35,7 @@ class Model:
         response = send_request('GET', endpoint)
         # Check for API error response
         if response.get('status') == 'error':
+            print("API Error:", response.get('messages', 'Unknown error'))
             return None
         # Handle case where 'total' key is missing or 0
         if response.get('total', 0) != 0:
@@ -51,6 +52,7 @@ class Model:
     def get_or_create_model(self, metadata, hardware):
         model_id = self.get_model(self.model)
         if model_id is None:
+            print("Creating new model")
             success = self.post_model(metadata['manufacturer_id'], GlobalSettings().config['DEFAULTS']['snipeit_category_id'], GlobalSettings().config['DEFAULTS']['snipeit_fieldset_id'])
             if success:
                 model_id = self.get_model(self.model)
