@@ -28,7 +28,7 @@ class GlobalSettings:
         config.read(config_path)
         
         # Assuming you know which keys should be treated as boolean
-        boolean_keys = ['silent_mode', 'slack_logging', 'pyitagent_asset_collection']  # Add your boolean keys here
+        boolean_keys = ['silent_mode', 'slack_logging', 'pyitagent_asset_collection', 'pyitagent_asset_tag_generation']  # Add your boolean keys here
         
         # Dictionary to hold the parsed configuration
         parsed_config = {}
