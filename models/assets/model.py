@@ -31,7 +31,7 @@ class Model:
             raise Exception(f"Failed to post model: {response.get('messages')}")
 
     def get_model(self, model_name):
-        endpoint = f'models?limit=1&search={model_name}&sort=name'
+        endpoint = f'models?limit=1&search={model_name}&sort=name&order=asc'
         response = send_request('GET', endpoint)
         # Check for API error response
         if response.get('status') == 'error':
