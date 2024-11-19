@@ -34,6 +34,8 @@ def resolve_payload(type, values, collected_hardware = None):
                 'asset_tag': values['serial_number'],
                 'model_id': values['model_id']
             }
+            if not GlobalSettings().config['GENERAL']['pyitagent_asset_tag_generation']:
+                hardware.pop('asset_tag')
             for field, value in collected_hardware.items():
                 hardware[field] = value
             return hardware

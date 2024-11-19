@@ -19,7 +19,11 @@ def hardware_fixes(serial_number, metadata, hardware):
     manufacturer = hardware['manufacturer_name']
     hostname = metadata['hostname']
     match manufacturer:
-        case "Dell Inc.": serial_number = serial_number.split('/')[1]
+        case "Dell Inc.": 
+              try: 
+                   serial_number = serial_number.split('/')[1]
+              except (IndexError):
+                   serial_number = serial_number
         case "HP": serial_number = run_command('(gwmi win32_bios).serialnumber')
         case _: serial_number = hostname
     return serial_number
