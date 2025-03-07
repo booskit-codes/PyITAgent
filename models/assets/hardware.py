@@ -15,7 +15,8 @@ class Hardware:
         self.serial_number = self.determine_serial_number()
 
     def determine_serial_number(self):
-        serial_number = run_command("(gwmi win32_baseboard).serialnumber")
+        # Use BIOS serial number which is more reliable across manufacturers
+        serial_number = run_command("(gwmi win32_bios).serialnumber")
         return serial_number
 
     def collect_hardware_data(self):
