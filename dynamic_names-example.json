@@ -1,0 +1,28 @@
+{
+    "enabled": true,
+    "patterns": [
+      {
+        "prefix": "DES",
+        "description": "Desktop Computer",
+        "category_id": 20
+      },
+      {
+        "prefix": "LAP",
+        "description": "Laptop Computer",
+        "category_id": 21
+      },
+      {
+        "prefix": "MON",
+        "description": "Monitor",
+        "category_id": 19
+      }
+    ],
+    "company_mappings": {
+      "1": 1,
+      "2": 5,
+      "3": 2,
+      "5": 4,
+      "6": 3
+    },
+    "monitor_prefix": "MON"
+  }

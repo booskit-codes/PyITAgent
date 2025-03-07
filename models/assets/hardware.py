@@ -4,6 +4,7 @@ from utils.common import run_command, format_number
 from api.handler import resolve_payload, send_request
 from models.assets.edgecases import hardware_fixes
 from config.settings import GlobalSettings
+from utils.dynamic_naming import DynamicNaming
 import config.constants as c
 
 class Hardware:
@@ -13,6 +14,7 @@ class Hardware:
         self.disk_info = None
         self.disk_used = None
         self.serial_number = self.determine_serial_number()
+        self.dynamic_naming = DynamicNaming()
 
     def determine_serial_number(self):
         # Use BIOS serial number which is more reliable across manufacturers
@@ -39,7 +41,7 @@ class Hardware:
             if value["enabled"] is False:
                 continue
             result = run_command(value["ps_command"])
-            if value["float_number"] is True: result = format_number(result)
+            if value.get("float_number", False) is True: result = format_number(result)
             self.collected_hardware[field] = result
 
     def determine_disk_info(self):
@@ -58,6 +60,14 @@ class Hardware:
 
     def post_hardware(self, serial_number, model_id, hostname, status_id, company_id):
         endpoint = 'hardware'
+        
+        # Check if dynamic naming is enabled and the hostname follows a pattern
+        if self.dynamic_naming.enabled and self.dynamic_naming.is_valid_name_pattern(hostname):
+            # Get company ID from the asset name pattern
+            dynamic_company_id = self.dynamic_naming.get_company_id(hostname)
+            if dynamic_company_id:
+                company_id = dynamic_company_id
+        
         values = {
             'serial_number': serial_number,
             'hostname': hostname,
@@ -66,6 +76,15 @@ class Hardware:
         payload = resolve_payload("hardware", values, self.collected_hardware)
         payload['company_id'] = company_id
         payload['status_id'] = status_id
+        
+        # If dynamic naming is enabled, we might want to set the category ID
+        if self.dynamic_naming.enabled:
+            category_id = self.dynamic_naming.get_category_id(hostname)
+            if category_id:
+                # Note: category_id is typically set at the model level, not the asset level
+                # This is just a placeholder - you may need to adjust based on your Snipe-IT setup
+                payload['category_id'] = category_id
+        
         response = send_request('POST', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
@@ -93,12 +112,32 @@ class Hardware:
 
     def patch_hardware(self, hardware_id, serial_number, model_id, hostname):
         endpoint = f'hardware/{hardware_id}?deleted=false'
+        
+        # Check if dynamic naming is enabled and the hostname follows a pattern
+        dynamic_company_id = None
+        if self.dynamic_naming.enabled and self.dynamic_naming.is_valid_name_pattern(hostname):
+            # Get company ID from the asset name pattern
+            dynamic_company_id = self.dynamic_naming.get_company_id(hostname)
+        
         values = {
             'serial_number': serial_number,
             'hostname': hostname,
             'model_id': model_id
         }
         payload = resolve_payload("hardware", values, self.collected_hardware)
+        
+        # Add company ID if determined dynamically
+        if dynamic_company_id:
+            payload['company_id'] = dynamic_company_id
+        
+        # If dynamic naming is enabled, we might want to set the category ID
+        if self.dynamic_naming.enabled:
+            category_id = self.dynamic_naming.get_category_id(hostname)
+            if category_id:
+                # Note: category_id is typically set at the model level, not the asset level
+                # This is just a placeholder - you may need to adjust based on your Snipe-IT setup
+                payload['category_id'] = category_id
+        
         response = send_request('PATCH', endpoint, payload=payload)
         if response.get('status') == 'success':
             return True
@@ -111,10 +150,19 @@ class Hardware:
         self.serial_number = hardware_fixes(self.serial_number, metadata, hardware)
         self.collect_hardware_data()
         hardware_id = self.get_hardware(self.serial_number)
+        
+        # Determine company ID dynamically if possible
+        company_id = GlobalSettings().config['DEFAULTS']['snipeit_company_id']
+        if self.dynamic_naming.enabled and self.dynamic_naming.is_valid_name_pattern(metadata['hostname']):
+            dynamic_company_id = self.dynamic_naming.get_company_id(metadata['hostname'])
+            if dynamic_company_id:
+                company_id = dynamic_company_id
+        
         if hardware_id is None:
             print("Creating new hardware")
             update_hardware = False
-            success = self.post_hardware(self.serial_number, metadata['model_id'], metadata['hostname'], GlobalSettings().config['DEFAULTS']['snipeit_status_id'], GlobalSettings().config['DEFAULTS']['snipeit_company_id'])
+            success = self.post_hardware(self.serial_number, metadata['model_id'], metadata['hostname'], 
+                                         GlobalSettings().config['DEFAULTS']['snipeit_status_id'], company_id)
             if success:
                 hardware_id = self.get_hardware(self.serial_number)
         if update_hardware:

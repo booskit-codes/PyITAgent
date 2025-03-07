@@ -52,3 +52,4 @@ docs/_build/
 # Local development configuration
 config.ini
 custom_fields.json
+dynamic_names.json
