@@ -76,5 +76,21 @@
             "ps_command": "$Samples = 5; $Interval = 1; $i=0; $Total=0; while ($i -lt $Samples) { $Total += (Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples.CookedValue; Start-Sleep -Seconds $Interval; $i++ }; $Average = $Total / $Samples; $Average",
             "float_number": true
         }
+    },
+    "monitor_fields": {
+        "custom_fields": {
+            "_snipeit_screen_size_21": {
+                "name": "Screen Size",
+                "enabled": true,
+                "ps_command": "(Get-WmiObject -Namespace root\\wmi -Class WmiMonitorBasicDisplayParams | Select-Object -First 1).MaxHorizontalImageSize",
+                "float_number": true
+            },
+            "_snipeit_windows_username_11": {
+                "name": "Windows Username",
+                "enabled": true,
+                "ps_command": "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name",
+                "float_number": false
+            }
+        }
     }
 }
